@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画面録画tooooool</title>
+</head>
+<body>
+    <button id="recordButton">録画開始</button>
+
+<script>
+    // 録画開始/停止ボタンの要素を取得
+    let recordButton = document.getElementById('recordButton');
+    let mediaRecorder, recordedChunks = []; // 録画データを格納するための変数
+    let isRecording = false; // 録画中かどうかを判定するフラグ
+
+    // 録画開始/停止ボタンがクリックされたときの処理
+    recordButton.addEventListener('click', async () => {
+        if (!isRecording) {
+            // 録画が開始されていない場合
+
+            try {
+                // 画面のキャプチャストリームを取得
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        cursor: 'always' // カーソルも録画対象にする
+                    }
+                });
+
+                // 録画データを格納するための配列を初期化
+                recordedChunks = [];
+                // MediaRecorderを使って録画を開始
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+                
+                // 録画データが生成される度に呼ばれる
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        // 録画データがある場合、配列に追加
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                // 録画が停止したときの処理
+                mediaRecorder.onstop = saveRecording;
+
+                // 録画を開始
+                mediaRecorder.start();
+                isRecording = true; // 録画中フラグを立てる
+                recordButton.textContent = '録画終了'; 
+
+            } catch (err) {
+                // 画面録画の権限を拒否された場合やエラー時の処理
+                console.error('Error: ' + err);
+            }
+        } else {
+            // 録画が開始されている場合、録画を停止
+            mediaRecorder.stop();
+            isRecording = false; // 録画終了フラグを下げる
+            recordButton.textContent = '録画開始'; 
+        }
+    });
+
+   
+    function saveRecording() {
+        // 録画データをBlobオブジェクトに変換
+        const blob = new Blob(recordedChunks, { type: 'video/mp4' });
+        // Blob URLを作成
+        const url = URL.createObjectURL(blob);
+        // ダウンロード用のリンクを作成
+        const a = document.createElement('a');
+        a.style.display = 'none'; // 表示しない
+        a.href = url; // 作成したURLを設定
+        a.download = 'recording.mp4'; // ダウンロードファイル名を指定
+        document.body.appendChild(a); // ダウンロードリンクをDOMに追加
+        a.click(); // ダウンロードリンクをクリック（自動的にダウンロードが開始）
+        URL.revokeObjectURL(url); // 使用後にBlob URLを解放
+    }
+</script>
+</body>
+</html>
+
